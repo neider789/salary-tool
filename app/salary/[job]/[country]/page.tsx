@@ -383,8 +383,10 @@ const content = {
     overviewText: (job: string, country: string, estimate: SalaryEstimate, data: CountryData) =>
       `The average salary for ${job} in ${country} ranges from ${estimate.low.local} (${estimate.low.usd}) to ${estimate.high.local} (${estimate.high.usd}) annually, with an average of ${estimate.average.local} (${estimate.average.usd}). Entry-level positions typically pay around ${estimate.hourly.low} per hour, while senior roles can exceed ${estimate.high.local}.`,
     market: "Job Market Trends",
-    marketText: (job: string, country: string, _estimate: SalaryEstimate, data: CountryData) =>
-      `Demand for ${job} professionals in ${country} is currently ${data.demandLevel === "high" ? "high" : data.demandLevel === "medium" ? "steady" : "growing"}. ${data.remoteWork} ${data.costOfLiving}`,
+    marketText: (job: string, country: string, _estimate: SalaryEstimate, data: CountryData) => {
+      const level = data.demandLevel === "high" ? "high" : data.demandLevel === "medium" ? "steady" : "growing";
+      return `Demand for ${job} professionals in ${country} is currently ${level}. ${data.remoteWork} ${data.costOfLiving}`;
+    },
     factors: "Factors Affecting Salary",
     factorsText: (job: string) =>
       `Key factors influencing ${job} salaries include years of experience, specific technical skills, company size, and location within the country. Certifications from major cloud providers (AWS, Azure, GCP) and frameworks like React, Node.js, and Python consistently boost earning potential.`,
@@ -398,8 +400,10 @@ const content = {
     overviewText: (job: string, country: string, estimate: SalaryEstimate, data: CountryData) =>
       `El salario promedio para ${job} en ${country} oscila entre ${estimate.low.local} (${estimate.low.usd}) y ${estimate.high.local} (${estimate.high.usd}) anuales, con un promedio de ${estimate.average.local} (${estimate.average.usd}). Los puestos de nivel inicial típicamente pagan alrededor de ${estimate.hourly.low} por hora, mientras que los roles senior pueden superar ${estimate.high.local}.`,
     market: "Tendencias del Mercado Laboral",
-    marketText: (job: string, country: string, _estimate: SalaryEstimate, data: CountryData) =>
-      `La demanda de profesionales de ${job} en ${country} actualmente es ${data.demandLevel === "high" ? "alta" : data.demandLevel === "medium" ? "estable" : "en crecimiento"}. ${data.remoteWork} ${data.costOfLiving}`,
+    marketText: (job: string, country: string, _estimate: SalaryEstimate, data: CountryData) => {
+      const level = data.demandLevel === "high" ? "alta" : data.demandLevel === "medium" ? "estable" : "en crecimiento";
+      return `La demanda de profesionales de ${job} en ${country} actualmente es ${level}. ${data.remoteWork} ${data.costOfLiving}`;
+    },
     factors: "Factores que Afectan el Salario",
     factorsText: (job: string) =>
       `Los factores clave que influyen en los salarios de ${job} incluyen años de experiencia, habilidades técnicas específicas, tamaño de la empresa y ubicación dentro del país. Las certificaciones de proveedores principales de nube (AWS, Azure, GCP) y marcos de trabajo como React, Node.js y Python aumentan consistentemente el potencial de ingresos.`,
@@ -413,8 +417,10 @@ const content = {
     overviewText: (job: string, country: string, estimate: SalaryEstimate, data: CountryData) =>
       `O salário médio para ${job} no ${country} varia de ${estimate.low.local} (${estimate.low.usd}) a ${estimate.high.local} (${estimate.high.usd}) anualmente, com média de ${estimate.average.local} (${estimate.average.usd}). Posições de nível inicial tipicamente pagam cerca de ${estimate.hourly.low} por hora, enquanto cargos seniores podem superar ${estimate.high.local}.`,
     market: "Tendências do Mercado de Trabalho",
-    marketText: (job: string, country: string, _estimate: SalaryEstimate, data: CountryData) =>
-      `A demanda por profissionais de ${job} no ${country} atualmente é ${data.demandLevel === "high" ? "alta" : data.demandLevel === "medium" : "estável" : "crescente"}. ${data.remoteWork} ${data.costOfLiving}`,
+    marketText: (job: string, country: string, _estimate: SalaryEstimate, data: CountryData) => {
+      const level = data.demandLevel === "high" ? "alta" : data.demandLevel === "medium" ? "estável" : "crescente";
+      return `A demanda por profissionais de ${job} no ${country} atualmente é ${level}. ${data.remoteWork} ${data.costOfLiving}`;
+    },
     factors: "Fatores que Afetam o Salário",
     factorsText: (job: string) =>
       `Fatores-chave que influenciam salários de ${job} incluem anos de experiência, habilidades técnicas específicas, tamanho da empresa e localização no país. Certificações de provedores de nuvem importantes (AWS, Azure, GCP) e frameworks como React, Node.js e Python aumentam consistentemente o potencial de ganho.`,
@@ -432,6 +438,15 @@ const countryLanguage: Record<string, Language> = {
   chile: "es",
   spain: "es",
   brazil: "pt",
+};
+
+const getDemandLevel = (level: "high" | "medium" | "low", lang: Language): string => {
+  const levels = {
+    en: { high: "high", medium: "steady", low: "growing" },
+    es: { high: "alta", medium: "estable", low: "en crecimiento" },
+    pt: { high: "alta", medium: "estável", low: "crescente" },
+  };
+  return levels[lang][level];
 };
 
 const countryNames: Record<string, string> = {
