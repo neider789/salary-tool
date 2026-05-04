@@ -101,8 +101,10 @@ function generateSalaryEstimate(
   const randomFactor = (country.length % 3) * 0.02;
 
   const adjustedBase = baseSalary * (multiplier + jobVariation - randomFactor);
-  const avgLocal = Math.round(adjustedBase);
-  const avgUsd = Math.round(adjustedBase * (currencyConversion["USD"] / (currencyConversion[Object.keys(countryMultiplier).find((k) => k === country) || "USD"] || 1)));
+  // Core calculation: USD base is adjustedBase, convert to local currency for local display
+  const currencyRate = currencyConversion[currency] ?? 1;
+  const avgLocal = Math.round(adjustedBase * currencyRate);
+  const avgUsd = Math.round(adjustedBase);
 
   const lowLocal = Math.round(avgLocal * 0.75);
   const highLocal = Math.round(avgLocal * 1.35);
@@ -112,28 +114,41 @@ function generateSalaryEstimate(
   const currency = country === "united-states" ? "USD" : country === "united-kingdom" ? "GBP" : country === "germany" || country === "france" || country === "spain" || country === "italy" || country === "netherlands" ? "EUR" : country === "canada" ? "CAD" : country === "australia" ? "AUD" : country === "japan" ? "JPY" : country === "brazil" ? "BRL" : country === "mexico" ? "MXN" : country === "colombia" ? "COP" : country === "india" ? "INR" : country === "sweden" ? "SEK" : country === "norway" ? "NOK" : country === "switzerland" ? "CHF" : country === "singapore" ? "SGD" : country === "south-korea" ? "KRW" : country === "argentina" ? "ARS" : country === "chile" ? "CLP" : country === "peru" ? "PEN" : "USD";
 
   const formatLocal = (val: number): string => {
-    if (currency === "JPY" || currency === "KRW" || currency === "COP" || currency === "CLP" || currency === "ARS") return `${val.toLocaleString()}`;
-    if (currency === "INR") return `₹${(val / 100000).toFixed(1)}L`;
-    if (currency === "MXN" || currency === "BRL") return `$${(val / 1000).toFixed(0)}k`;
-    if (currency === "USD") return `$${val.toLocaleString()}`;
-    if (currency === "GBP") return `£${val.toLocaleString()}`;
-    if (currency === "EUR") return `€${val.toLocaleString()}`;
-    if (currency === "CAD" || currency === "AUD") return `C$${val.toLocaleString()}`;
-    return `${val.toLocaleString()}`;
+    const s = val.toLocaleString();
+    switch (currency) {
+      case "COP": return `$${s} COP`;
+      case "MXN": return `$${s} MXN`;
+      case "CLP": return `$${s} CLP`;
+      case "PEN": return `S/${s}`;
+      case "INR": return `₹${s}`;
+      case "BRL": return `R$${s}`;
+      case "USD": return `$${s} USD`;
+      case "GBP": return `£${s}`;
+      case "EUR": return `€${s}`;
+      case "CAD": return `C$${s}`;
+      case "AUD": return `A$${s}`;
+      case "JPY": return `¥${s}`;
+      case "KRW": return `₩${s}`;
+      case "SEK": return `kr${s}`;
+      case "NOK": return `kr${s}`;
+      case "CHF": return `CHF${s}`;
+      case "SGD": return `S$${s}`;
+      default: return `$${s} USD`;
+    }
   };
 
   return {
     low: {
       local: formatLocal(lowLocal),
-      usd: `$${lowUsd.toLocaleString()}`,
+      usd: `$${lowUsd.toLocaleString()} USD`,
     },
     average: {
       local: formatLocal(avgLocal),
-      usd: `$${avgUsd.toLocaleString()}`,
+      usd: `$${avgUsd.toLocaleString()} USD`,
     },
     high: {
       local: formatLocal(highLocal),
-      usd: `$${highUsd.toLocaleString()}`,
+      usd: `$${highUsd.toLocaleString()} USD`,
     },
     hourly: {
       low: currency === "USD" ? "$35" : currency === "GBP" ? "£20" : currency === "EUR" ? "€18" : currency === "CAD" ? "C$25" : currency === "AUD" ? "A$28" : currency === "JPY" ? "¥1,200" : currency === "BRL" ? "R$80" : currency === "MXN" ? "$150" : currency === "COP" ? "$18,000" : currency === "INR" ? "₹350" : "$25",
@@ -380,6 +395,10 @@ const content = {
   en: {
     title: "Average Salary",
     overview: "Salary Overview",
+    salaryRange: "Salary Range",
+    low: "Low",
+    average: "Average",
+    high: "High",
     overviewText: (job: string, country: string, estimate: SalaryEstimate, data: CountryData) =>
       `The average salary for ${job} in ${country} ranges from ${estimate.low.local} (${estimate.low.usd}) to ${estimate.high.local} (${estimate.high.usd}) annually, with an average of ${estimate.average.local} (${estimate.average.usd}). Entry-level positions typically pay around ${estimate.hourly.low} per hour, while senior roles can exceed ${estimate.high.local}.`,
     market: "Job Market Trends",
@@ -404,6 +423,10 @@ const content = {
   es: {
     title: "Salario Promedio",
     overview: "Resumen Salarial",
+    salaryRange: "Rango Salarial",
+    low: "Mínimo",
+    average: "Promedio",
+    high: "Máximo",
     overviewText: (job: string, country: string, estimate: SalaryEstimate, data: CountryData) =>
       `El salario promedio para ${job} en ${country} oscila entre ${estimate.low.local} (${estimate.low.usd}) y ${estimate.high.local} (${estimate.high.usd}) anuales, con un promedio de ${estimate.average.local} (${estimate.average.usd}). Los puestos de nivel inicial típicamente pagan alrededor de ${estimate.hourly.low} por hora, mientras que los roles senior pueden superar ${estimate.high.local}.`,
     market: "Tendencias del Mercado Laboral",
@@ -428,6 +451,10 @@ const content = {
   pt: {
     title: "Salário Médio",
     overview: "Visão Geral dos Salários",
+    salaryRange: "Faixa Salarial",
+    low: "Mínimo",
+    average: "Médio",
+    high: "Máximo",
     overviewText: (job: string, country: string, estimate: SalaryEstimate, data: CountryData) =>
       `O salário médio para ${job} no ${country} varia de ${estimate.low.local} (${estimate.low.usd}) a ${estimate.high.local} (${estimate.high.usd}) anualmente, com média de ${estimate.average.local} (${estimate.average.usd}). Posições de nível inicial tipicamente pagam cerca de ${estimate.hourly.low} por hora, enquanto cargos seniores podem superar ${estimate.high.local}.`,
     market: "Tendências do Mercado de Trabalho",
@@ -531,48 +558,24 @@ export default async function SalaryPage({ params }: PageProps) {
         {t.title} {displayJob} in {displayCountry} (2026)
   </h1>
 
-  <section className="mb-8">
-    <h2 className="text-xl font-semibold text-gray-800 mb-3">
-      Salary Range
-    </h2>
-
-    <ul className="text-gray-600 space-y-2">
-      <li>
-        <strong>Low:</strong> {salaryEstimate.low.local} ({salaryEstimate.low.usd})
-      </li>
-      <li>
-        <strong>Average:</strong> {salaryEstimate.average.local} ({salaryEstimate.average.usd})
-      </li>
-      <li>
-        <strong>High:</strong> {salaryEstimate.high.local} ({salaryEstimate.high.usd})
-      </li>
-    </ul>
-  </section>
+  {/* Removed duplicated Salary Range section to rely on localized one below */}
 
       <section className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-800 mb-3">
-          Salary Range
-        </h2>
-
+        <h2 className="text-xl font-semibold text-gray-800 mb-3">{t.salaryRange}</h2>
         <ul className="text-gray-600 space-y-2">
           <li>
-            <strong>Low:</strong> {salaryEstimate.low.local} ({salaryEstimate.low.usd})
+            <strong>{t.low}:</strong> {salaryEstimate.low.local} ({salaryEstimate.low.usd})
           </li>
           <li>
-            <strong>Average:</strong> {salaryEstimate.average.local} ({salaryEstimate.average.usd})
+            <strong>{t.average}:</strong> {salaryEstimate.average.local} ({salaryEstimate.average.usd})
           </li>
           <li>
-            <strong>High:</strong> {salaryEstimate.high.local} ({salaryEstimate.high.usd})
+            <strong>{t.high}:</strong> {salaryEstimate.high.local} ({salaryEstimate.high.usd})
           </li>
         </ul>
       </section>
 
-      <section className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-800 mb-3">{t.overview}</h2>
-        <p className="text-gray-600 leading-relaxed">
-          {t.overviewText(displayJob, displayCountry, salaryEstimate, data)}
-        </p>
-      </section>
+      {/* duplicate overview section removed to avoid duplication */}
 
       <section className="mb-8">
         <h2 className="text-xl font-semibold text-gray-800 mb-3">{t.market}</h2>
