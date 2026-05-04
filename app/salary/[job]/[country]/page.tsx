@@ -102,15 +102,58 @@ function generateSalaryEstimate(
 
   const adjustedBase = baseSalary * (multiplier + jobVariation - randomFactor);
   const avgLocal = Math.round(adjustedBase);
-  const avgUsd = Math.round(adjustedBase * (currencyConversion["USD"] / (currencyConversion[Object.keys(countryMultiplier).find((k) => k === country) || "USD"] || 1)));
+  // Compute USD equivalent without nested ternaries
+  const rateForCurrency = currencyConversion[currency] ?? 1;
+  const avgUsd = Math.round(adjustedBase / rateForCurrency);
 
   const lowLocal = Math.round(avgLocal * 0.75);
   const highLocal = Math.round(avgLocal * 1.35);
   const lowUsd = Math.round(avgUsd * 0.75);
   const highUsd = Math.round(avgUsd * 1.35);
 
-  const currency = country === "united-states" ? "USD" : country === "united-kingdom" ? "GBP" : country === "germany" || country === "france" || country === "spain" || country === "italy" || country === "netherlands" ? "EUR" : country === "canada" ? "CAD" : country === "australia" ? "AUD" : country === "japan" ? "JPY" : country === "brazil" ? "BRL" : country === "mexico" ? "MXN" : country === "colombia" ? "COP" : country === "india" ? "INR" : country === "sweden" ? "SEK" : country === "norway" ? "NOK" : country === "switzerland" ? "CHF" : country === "singapore" ? "SGD" : country === "south-korea" ? "KRW" : country === "argentina" ? "ARS" : country === "chile" ? "CLP" : country === "peru" ? "PEN" : "USD";
-
+  // Determine currency using explicit if/else to avoid nested ternaries
+  let currency = "USD";
+  if (country === "united-states") {
+    currency = "USD";
+  } else if (country === "united-kingdom") {
+    currency = "GBP";
+  } else if (["germany", "france", "spain", "italy", "netherlands"].includes(country)) {
+    currency = "EUR";
+  } else if (country === "canada") {
+    currency = "CAD";
+  } else if (country === "australia") {
+    currency = "AUD";
+  } else if (country === "japan") {
+    currency = "JPY";
+  } else if (country === "brazil") {
+    currency = "BRL";
+  } else if (country === "mexico") {
+    currency = "MXN";
+  } else if (country === "colombia") {
+    currency = "COP";
+  } else if (country === "india") {
+    currency = "INR";
+  } else if (country === "sweden") {
+    currency = "SEK";
+  } else if (country === "norway") {
+    currency = "NOK";
+  } else if (country === "switzerland") {
+    currency = "CHF";
+  } else if (country === "singapore") {
+    currency = "SGD";
+  } else if (country === "south-korea") {
+    currency = "KRW";
+  } else if (country === "argentina") {
+    currency = "ARS";
+  } else if (country === "chile") {
+    currency = "CLP";
+  } else if (country === "peru") {
+    currency = "PEN";
+  } else {
+    currency = "USD";
+  }
+  const rateForCurrency = currencyConversion[currency] ?? 1;
+  const avgUsd = Math.round(adjustedBase / rateForCurrency);
   const formatLocal = (val: number): string => {
     if (currency === "JPY" || currency === "KRW" || currency === "COP" || currency === "CLP" || currency === "ARS") return `${val.toLocaleString()}`;
     if (currency === "INR") return `₹${(val / 100000).toFixed(1)}L`;
@@ -135,10 +178,66 @@ function generateSalaryEstimate(
       local: formatLocal(highLocal),
       usd: `$${highUsd.toLocaleString()}`,
     },
-    hourly: {
-      low: currency === "USD" ? "$35" : currency === "GBP" ? "£20" : currency === "EUR" ? "€18" : currency === "CAD" ? "C$25" : currency === "AUD" ? "A$28" : currency === "JPY" ? "¥1,200" : currency === "BRL" ? "R$80" : currency === "MXN" ? "$150" : currency === "COP" ? "$18,000" : currency === "INR" ? "₹350" : "$25",
-      high: currency === "USD" ? "$95" : currency === "GBP" ? "£55" : currency === "EUR" ? "€48" : currency === "CAD" ? "C$70" : currency === "AUD" ? "A$80" : currency === "JPY" ? "¥3,200" : currency === "BRL" ? "R$180" : currency === "MXN" ? "$400" : currency === "COP" ? "$45,000" : currency === "INR" ? "₹900" : "$45",
-    },
+    hourly: (() => {
+      let low = "$25";
+      let high = "$45";
+      if (currency === "USD") {
+        low = "$35";
+        high = "$95";
+      } else if (currency === "GBP") {
+        low = "£20";
+        high = "£55";
+      } else if (currency === "EUR") {
+        low = "€18";
+        high = "€48";
+      } else if (currency === "CAD") {
+        low = "C$25";
+        high = "C$70";
+      } else if (currency === "AUD") {
+        low = "A$28";
+        high = "A$80";
+      } else if (currency === "JPY") {
+        low = "¥1,200";
+        high = "¥3,200";
+      } else if (currency === "BRL") {
+        low = "R$80";
+        high = "R$180";
+      } else if (currency === "MXN") {
+        low = "$150";
+        high = "$400";
+      } else if (currency === "COP") {
+        low = "$18,000";
+        high = "$45,000";
+      } else if (currency === "INR") {
+        low = "₹350";
+        high = "₹900";
+      } else if (currency === "SEK") {
+        low = "kr230";
+        high = "kr400";
+      } else if (currency === "NOK") {
+        low = "kr270";
+        high = "kr450";
+      } else if (currency === "CHF") {
+        low = "CHF50";
+        high = "CHF85";
+      } else if (currency === "SGD") {
+        low = "S$35";
+        high = "S$60";
+      } else if (currency === "KRW") {
+        low = "₩25,000";
+        high = "₩50,000";
+      } else if (currency === "ARS") {
+        low = "$"; // keep simple display
+        high = "$";
+      } else if (currency === "CLP") {
+        low = "$12,000";
+        high = "$24,000";
+      } else if (currency === "PEN") {
+        low = "S/40";
+        high = "S/80";
+      }
+      return { low, high };
+    })(),
   };
 }
 
@@ -461,14 +560,7 @@ const countryLanguage: Record<string, Language> = {
   brazil: "pt",
 };
 
-const getDemandLevel = (level: "high" | "medium" | "low", lang: Language): string => {
-  const levels = {
-    en: { high: "high", medium: "steady", low: "growing" },
-    es: { high: "alta", medium: "estable", low: "en crecimiento" },
-    pt: { high: "alta", medium: "estável", low: "crescente" },
-  };
-  return levels[lang][level];
-};
+// Removed getDemandLevel helper to avoid dead code and nested ternaries
 
 const countryNames: Record<string, string> = {
   "united-states": "United States",
