@@ -1,5 +1,14 @@
+import combinations from "@/data/seo-combinations.json";
+
 interface PageProps {
   params: Promise<{ job: string; country: string }>;
+}
+
+export async function generateStaticParams() {
+  return combinations.map((item) => ({
+    job: item.job,
+    country: item.country,
+  }));
 }
 
 export async function generateMetadata({ params }: PageProps) {
