@@ -529,7 +529,25 @@ export default async function SalaryPage({ params }: PageProps) {
     <main className="min-h-screen py-12 px-4 max-w-3xl mx-auto">
       <h1 className="text-3xl font-bold text-gray-900 mb-8">
         {t.title} {displayJob} in {displayCountry} (2026)
-      </h1>
+  </h1>
+
+  <section className="mb-8">
+    <h2 className="text-xl font-semibold text-gray-800 mb-3">
+      Salary Range
+    </h2>
+
+    <ul className="text-gray-600 space-y-2">
+      <li>
+        <strong>Low:</strong> {salaryEstimate.low.local} ({salaryEstimate.low.usd})
+      </li>
+      <li>
+        <strong>Average:</strong> {salaryEstimate.average.local} ({salaryEstimate.average.usd})
+      </li>
+      <li>
+        <strong>High:</strong> {salaryEstimate.high.local} ({salaryEstimate.high.usd})
+      </li>
+    </ul>
+  </section>
 
       <section className="mb-8">
         <h2 className="text-xl font-semibold text-gray-800 mb-3">
