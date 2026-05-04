@@ -560,20 +560,7 @@ export default async function SalaryPage({ params }: PageProps) {
 
   {/* Removed duplicated Salary Range section to rely on localized one below */}
 
-      <section className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-800 mb-3">{t.salaryRange}</h2>
-        <ul className="text-gray-600 space-y-2">
-          <li>
-            <strong>{t.low}:</strong> {salaryEstimate.low.local} ({salaryEstimate.low.usd})
-          </li>
-          <li>
-            <strong>{t.average}:</strong> {salaryEstimate.average.local} ({salaryEstimate.average.usd})
-          </li>
-          <li>
-            <strong>{t.high}:</strong> {salaryEstimate.high.local} ({salaryEstimate.high.usd})
-          </li>
-        </ul>
-      </section>
+      (Salary Range section duplicated earlier; removed)
 
       {/* duplicate overview section removed to avoid duplication */}
 
