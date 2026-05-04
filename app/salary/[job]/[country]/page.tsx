@@ -532,6 +532,24 @@ export default async function SalaryPage({ params }: PageProps) {
       </h1>
 
       <section className="mb-8">
+        <h2 className="text-xl font-semibold text-gray-800 mb-3">
+          Salary Range
+        </h2>
+
+        <ul className="text-gray-600 space-y-2">
+          <li>
+            <strong>Low:</strong> {salaryEstimate.low.local} ({salaryEstimate.low.usd})
+          </li>
+          <li>
+            <strong>Average:</strong> {salaryEstimate.average.local} ({salaryEstimate.average.usd})
+          </li>
+          <li>
+            <strong>High:</strong> {salaryEstimate.high.local} ({salaryEstimate.high.usd})
+          </li>
+        </ul>
+      </section>
+
+      <section className="mb-8">
         <h2 className="text-xl font-semibold text-gray-800 mb-3">{t.overview}</h2>
         <p className="text-gray-600 leading-relaxed">
           {t.overviewText(displayJob, displayCountry, salaryEstimate, data)}
