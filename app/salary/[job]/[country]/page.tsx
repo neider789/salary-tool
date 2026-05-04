@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+export const dynamic = 'force-dynamic';
 import combinations from '@/data/seo-combinations.json';
 
 type Combination = {
@@ -130,25 +131,61 @@ const content: Content = {
 
 // Helper to resolve language
 function getLanguage(country: string): 'en' | 'es' | 'pt' {
-  return countryLanguageMap[country.toLowerCase()] || 'en';
+  const c = typeof country === 'string' ? country.toLowerCase() : '';
+  return countryLanguageMap[c] || 'en';
 }
 
 // Helper to resolve currency
 function getCurrency(country: string): string {
-  return countryCurrencyMap[country.toLowerCase()] || 'USD';
+  const c = typeof country === 'string' ? country.toLowerCase() : '';
+  return countryCurrencyMap[c] || 'USD';
 }
 
 // Helper to resolve combination by params
+// Patch: fallback for missing combination properties (e.g. India, Italy cases)
 function findCombination(
   job: string,
   country: string
-): Combination | undefined {
-  return combinations.find(
-    (c: Combination) =>
-      c.job.toLowerCase() === job.toLowerCase() &&
-      c.country.toLowerCase() === country.toLowerCase()
+): Combination {
+  const defaultBaseSalary = 85000;
+  const defaultCurrency = 'USD';
+  if (typeof job !== 'string' || typeof country !== 'string') {
+    return {
+      job: String(job),
+      country: String(country),
+      currency: defaultCurrency,
+      jobBaseSalary: defaultBaseSalary,
+    };
+  }
+  const normJob = job.toLowerCase();
+  const normCountry = country.toLowerCase();
+
+  const found = (combinations as Array<{ job: string; country: string }>).find(
+    (c) => {
+      const cJob = typeof c?.job === 'string' ? c.job.toLowerCase() : '';
+      const cCountry = typeof c?.country === 'string' ? c.country.toLowerCase() : '';
+      return cJob === normJob && cCountry === normCountry;
+    }
   );
+
+  if (found) {
+    return {
+      job: found.job,
+      country: found.country,
+      currency: getCurrency(found.country) || defaultCurrency,
+      jobBaseSalary: defaultBaseSalary,
+    };
+  }
+
+  // Fallback when not found in data
+  return {
+    job,
+    country,
+    currency: getCurrency(country) || defaultCurrency,
+    jobBaseSalary: defaultBaseSalary,
+  };
 }
+
 
 // Helper to replace text in content blocks
 function renderBlockTemplate(
@@ -163,9 +200,12 @@ function renderBlockTemplate(
 }
 
 export async function generateStaticParams() {
-  return combinations.map(({ job, country }) => ({
-    job,
-    country,
+  const items = (combinations as Array<any>).filter(
+    (c) => c && typeof c.job === 'string' && typeof c.country === 'string' && c.job.length > 0 && c.country.length > 0
+  );
+  return items.map((c) => ({
+    job: c.job,
+    country: c.country,
   }));
 }
 
@@ -175,11 +215,13 @@ export async function generateMetadata({
   params: { job: string; country: string };
 }): Promise<Metadata> {
   const { job, country } = params;
-  const lang = getLanguage(country);
+  const safeCountry = typeof country === 'string' ? country : 'unknown';
+  const safeJob = typeof job === 'string' ? job : 'unknown';
+  const lang = getLanguage(safeCountry);
   const contentTemplate = content[lang];
   const countryLabel =
-    country[0].toUpperCase() + country.slice(1).toLowerCase();
-  const jobLabel = job.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+    safeCountry.charAt(0).toUpperCase() + safeCountry.slice(1).toLowerCase();
+  const jobLabel = safeJob.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
 
   return {
     title: renderBlockTemplate(contentTemplate.title, {
@@ -205,20 +247,20 @@ export default function SalaryPage({
     );
   }
 
-  const lang = getLanguage(country);
+  const lang = getLanguage(country) || 'en';
   const contentBlock = content[lang];
 
-  const jobLabel = combination.job
-    .replace(/-/g, ' ')
-    .replace(/\b\w/g, (l) => l.toUpperCase());
-  const countryLabel =
-    combination.country[0].toUpperCase() +
-    combination.country.slice(1).toLowerCase();
+  const jobLabel = combination && combination.job
+    ? combination.job.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
+    : job.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+  const countryLabel = combination && combination.country
+    ? combination.country[0].toUpperCase() + combination.country.slice(1).toLowerCase()
+    : country[0].toUpperCase() + country.slice(1).toLowerCase();
 
   // Salary logic
   const usdSalary = combination.jobBaseSalary;
-  const currency = getCurrency(country);
-  const conversion = currencyConversion[currency];
+  const currency = getCurrency(country) || 'USD';
+  const conversion = currencyConversion[currency] || 1;
 
   const localAverage = Math.round(usdSalary * conversion);
   const localLow = Math.round(localAverage * 0.7);
