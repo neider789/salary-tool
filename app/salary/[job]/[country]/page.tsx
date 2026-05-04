@@ -1,369 +1,324 @@
-import combinations from "@/data/seo-combinations.json";
+import { Metadata } from 'next';
+import combinations from '@/data/seo-combinations.json';
 
-interface PageProps {
-  params: Promise<{ job: string; country: string }>;
-}
+type Combination = {
+  job: string;
+  country: string;
+  currency: string;
+  jobBaseSalary: number; // USD annual
+};
 
-type Language = "en" | "es" | "pt";
+type ContentBlock = {
+  title: string;
+  salaryRange: string;
+  overview: string;
+  market: string;
+  factors: string;
+  skills: string;
+};
 
-interface SalaryEstimate {
-  low: { local: string; usd: string };
-  average: { local: string; usd: string };
-  high: { local: string; usd: string };
-  hourly: { low: string; high: string };
-}
-
-const jobBaseSalary: Record<string, number> = {
-  "software-engineer": 80000,
-  "data-scientist": 85000,
-  "product-manager": 90000,
-  "ux-designER": 75000, // fix typo-safe default
-  "ux-designer": 75000,
-  "devops-engineer": 85000,
-  "full-stack-developer": 78000,
-  "frontend-developer": 70000,
-  "backend-developer": 75000,
-  "mobile-developer": 72000,
-  "cloud-architect": 100000,
-  "machine-learning-engineer": 95000,
-  "cybersecurity-analyst": 80000,
-  "database-administrator": 65000,
-  "qa-engineer": 55000,
-  "technical-writer": 50000,
-  "scrum-master": 65000,
-  "business-analyst": 60000,
-  "project-manager": 70000,
-  "systems-administrator": 60000,
-  "network-engineer": 65000,
-  "ai-researcher": 100000,
-  "blockchain-developer": 85000,
+type Content = {
+  [lang: string]: ContentBlock;
 };
 
 const currencyConversion: Record<string, number> = {
   USD: 1,
-  GBP: 0.79,
-  EUR: 0.92,
-  CAD: 1.36,
-  AUD: 1.53,
-  JPY: 149.5,
-  BRL: 5.0,
-  MXN: 17.2,
   COP: 4200,
-  INR: 83.2,
-  SEK: 10.4,
-  NOK: 10.6,
-  CHF: 0.88,
-  SGD: 1.34,
-  KRW: 1320,
-  ARS: 1050,
-  CLP: 930,
+  MXN: 17,
+  ARS: 880,
+  CLP: 910,
+  EUR: 0.93,
+  BRL: 5.3,
   PEN: 3.75,
 };
 
-function currencyForCountry(country: string): string {
-  if (country === "united-states") return "USD";
-  if (country === "united-kingdom") return "GBP";
-  if (["germany", "france", "spain", "italy", "netherlands"].includes(country)) return "EUR";
-  if (country === "canada") return "CAD";
-  if (country === "australia") return "AUD";
-  if (country === "japan") return "JPY";
-  if (country === "brazil") return "BRL";
-  if (country === "mexico") return "MXN";
-  if (country === "colombia") return "COP";
-  if (country === "india") return "INR";
-  if (country === "sweden") return "SEK";
-  if (country === "norway") return "NOK";
-  if (country === "switzerland") return "CHF";
-  if (country === "singapore") return "SGD";
-  if (country === "south-korea") return "KRW";
-  if (country === "argentina") return "ARS";
-  if (country === "chile") return "CLP";
-  if (country === "peru") return "PEN";
-  return "USD";
-}
-
-function formatLocalValue(val: number, currency: string): string {
-  const s = val.toLocaleString();
-  switch (currency) {
-    case "COP": return `$${s} COP`;
-    case "MXN": return `$${s} MXN`;
-    case "CLP": return `$${s} CLP`;
-    case "PEN": return `S/${s}`;
-    case "INR": return `₹${s}`;
-    case "BRL": return `R$${s}`;
-    case "USD": return `$${s} USD`;
-    case "GBP": return `£${s}`;
-    case "EUR": return `€${s}`;
-    case "CAD": return `C$${s}`;
-    case "AUD": return `A$${s}`;
-    case "JPY": return `¥${s}`;
-    case "KRW": return `₩${s}`;
-    case "SEK": return `kr${s}`;
-    case "NOK": return `kr${s}`;
-    case "CHF": return `CHF${s}`;
-    case "SGD": return `S$${s}`;
-    case "ARS": return `$${s}`;
-    default: return `$${s} USD`;
-  }
-}
-
-function formatUsdString(usdVal: number): string {
-  return `$${usdVal.toLocaleString()} USD`;
-}
-
-function hourlyDisplay(currencyCode: string, isLow: boolean): string {
-  switch (currencyCode) {
-    case "USD": return isLow ? "$35" : "$95";
-    case "GBP": return isLow ? "£20" : "£55";
-    case "EUR": return isLow ? "€18" : "€48";
-    case "CAD": return "C$25";
-    case "AUD": return "A$28";
-    case "JPY": return "¥1,200";
-    case "BRL": return "R$80";
-    case "MXN": return "$150";
-    case "COP": return "$18,000";
-    case "INR": return "₹350";
-    case "SEK": return "kr230";
-    case "NOK": return "kr270";
-    case "CHF": return "CHF50";
-    case "SGD": return "S$35";
-    case "KRW": return "₩25,000";
-    case "ARS": return "$";
-    case "CLP": return "$12,000";
-    case "PEN": return "S/40";
-    default: return isLow ? "$35" : "$95";
-  }
-}
-
-function generateSalaryEstimate(
-  job: string,
-  country: string,
-  baseSalaryUsd: number
-): SalaryEstimate {
-  const countryMultiplier: Record<string, number> = {
-    "united-states": 1.0,
-    "united-kingdom": 0.75,
-    germany: 0.72,
-    france: 0.65,
-    canada: 0.7,
-    australia: 0.65,
-    japan: 0.45,
-    brazil: 0.22,
-    mexico: 0.28,
-    colombia: 0.24,
-    india: 0.2,
-    spain: 0.55,
-    italy: 0.58,
-    netherlands: 0.75,
-    sweden: 0.65,
-    norway: 0.7,
-    switzerland: 1.1,
-    singapore: 0.72,
-    "south-korea": 0.52,
-    argentina: 0.28,
-    chile: 0.35,
-    peru: 0.3,
-  };
-
-  const multiplier = countryMultiplier[country] ?? 0.6;
-  const jobVariation = (job.length % 5 + 1) * 0.03;
-  const randomFactor = (country.length % 3) * 0.02;
-
-  const adjustedBaseUsd = baseSalaryUsd * (multiplier + jobVariation - randomFactor);
-
-  const currencyCode = currencyForCountry(country);
-  const rate = currencyConversion[currencyCode] ?? 1;
-
-  const avgUsd = Math.round(adjustedBaseUsd);
-  const avgLocal = Math.round(avgUsd * rate);
-
-  const lowLocal = Math.round(avgLocal * 0.75);
-  const highLocal = Math.round(avgLocal * 1.35);
-  const lowUsd = Math.round(avgUsd * 0.75);
-  const highUsd = Math.round(avgUsd * 1.35);
-
-  return {
-    low: { local: formatLocalValue(lowLocal, currencyCode), usd: formatUsdString(lowUsd) },
-    average: { local: formatLocalValue(avgLocal, currencyCode), usd: formatUsdString(avgUsd) },
-    high: { local: formatLocalValue(highLocal, currencyCode), usd: formatUsdString(highUsd) },
-    hourly: { low: hourlyDisplay(currencyCode, true), high: hourlyDisplay(currencyCode, false) }
-  };
-}
-
-/* Localization map for languages */
-const countryLanguage: Record<string, Language> = {
-  colombia: "es",
-  mexico: "es",
-  peru: "es",
-  argentina: "es",
-  chile: "es",
-  spain: "es",
-  brazil: "pt",
+const countryLanguageMap: Record<string, 'en' | 'es' | 'pt'> = {
+  usa: 'en',
+  spain: 'es',
+  colombia: 'es',
+  mexico: 'es',
+  peru: 'es',
+  argentina: 'es',
+  chile: 'es',
+  brazil: 'pt',
 };
 
-// Localized content keys
-const content = {
+const countryCurrencyMap: Record<string, string> = {
+  usa: 'USD',
+  spain: 'EUR',
+  colombia: 'COP',
+  mexico: 'MXN',
+  peru: 'PEN',
+  argentina: 'ARS',
+  chile: 'CLP',
+  brazil: 'BRL',
+};
+
+// Salary formatting helpers
+function formatCurrency(
+  value: number,
+  currency: string,
+  lang: 'en' | 'es' | 'pt'
+): string {
+  const locales: Record<'en' | 'es' | 'pt', string> = {
+    en: 'en-US',
+    es: 'es-ES',
+    pt: 'pt-BR',
+  };
+  const currencyNames: Record<string, string> = {
+    USD: 'USD',
+    COP: 'COP',
+    MXN: 'MXN',
+    ARS: 'ARS',
+    CLP: 'CLP',
+    EUR: 'EUR',
+    BRL: 'BRL',
+    PEN: 'PEN',
+  };
+
+  return new Intl.NumberFormat(locales[lang], {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value) + ` ${currencyNames[currency]}`;
+}
+
+function formatDualSalaryDisplay(
+  local: number,
+  currency: string,
+  usd: number,
+  lang: 'en' | 'es' | 'pt'
+) {
+  if (currency === 'USD') {
+    return `${formatCurrency(local, currency, lang)}`;
+  }
+  return `${formatCurrency(local, currency, lang)} (${formatCurrency(
+    usd,
+    'USD',
+    lang
+  )})`;
+}
+
+// Content system
+const content: Content = {
   en: {
-    title: "Average Salary",
-    overview: "Salary Overview",
-    salaryRange: "Salary Range",
-    low: "Low",
-    average: "Average",
-    high: "High",
-    overviewText: (job: string, country: string, estimate: SalaryEstimate) =>
-      `The average salary for ${job} in ${country} ranges from ${estimate.low.local} (${estimate.low.usd}) to ${estimate.high.local} (${estimate.high.usd}) annually, with an average of ${estimate.average.local} (${estimate.average.usd}). Entry-level positions typically pay around ${estimate.hourly.low} per hour, while senior roles can exceed ${estimate.high.local}.`,
-    market: "Job Market Trends",
-    marketText: (job: string, country: string, estimate: SalaryEstimate) => {
-      // Simplified market text; can be extended with real data
-      return `Demand for ${job} professionals in ${country} is currently favorable. Local conditions vary by region.`;
-    },
-    factors: "Factors Affecting Salary",
-    factorsText: (job: string) => `Key factors influencing ${job} salaries include years of experience, specific technical skills, company size, and location within the country. Certifications from major cloud providers (AWS, Azure, GCP) and frameworks like React, Node.js, and Python consistently boost earning potential.`,
-    skills: "In-Demand Skills",
-    skillsText: (job: string) => `For ${job} roles, employers prioritize cloud platforms, containerization (Docker, Kubernetes), CI/CD pipelines, and system design knowledge. Soft skills like communication and problem-solving increasingly impact salary packages.`,
+    title: 'Salary for {job} in {country}',
+    salaryRange: 'Salary Range',
+    overview: 'Overview',
+    market: 'Market Trends',
+    factors: 'Salary Influencing Factors',
+    skills: 'Key Skills',
   },
   es: {
-    title: "Salario Promedio",
-    overview: "Resumen Salarial",
-    salaryRange: "Rango Salarial",
-    low: "Mínimo",
-    average: "Promedio",
-    high: "Máximo",
-    overviewText: (job: string, country: string, estimate: SalaryEstimate) =>
-      `El salario promedio para ${job} en ${country} oscila entre ${estimate.low.local} (${estimate.low.usd}) y ${estimate.high.local} (${estimate.high.usd}) anuales, con un promedio de ${estimate.average.local} (${estimate.average.usd}). Los puestos de nivel inicial típicamente pagan alrededor de ${estimate.hourly.low} por hora, mientras que los roles senior pueden superar ${estimate.high.local}.`,
-    market: "Tendencias del Mercado Laboral",
-    marketText: (job: string, country: string, estimate: SalaryEstimate) => {
-      // Localized small; for demonstration
-      return `La demanda de ${job} en ${country} varía según la región.`;
-    },
-    factors: "Factores que Afectan el Salario",
-    factorsText: (job: string) => `Los factores clave que influyen en los salarios de ${job} incluyen años de experiencia, habilidades técnicas específicas, tamaño de la empresa y ubicación dentro del país. Las certificaciones de proveedores principales de nube (AWS, Azure, GCP) y marcos de trabajo como React, Node.js y Python aumentan consistentemente el potencial de ingresos.`,
-    skills: "Habilidades Demandadas",
-    skillsText: (job: string) => `Para roles de ${job}, los empleadores priorizan plataformas de nube, containerización (Docker, Kubernetes), pipelines de CI/CD y conocimiento de diseño de sistemas. Habilidades blandas como comunicación y resolución de problemas impactan cada vez más los paquetes salariares.`,
+    title: 'Salario de {job} en {country}',
+    salaryRange: 'Rango Salarial',
+    overview: 'Descripción general',
+    market: 'Tendencias de mercado',
+    factors: 'Factores que influyen en el salario',
+    skills: 'Habilidades clave',
   },
   pt: {
-    title: "Salário Médio",
-    overview: "Visão Geral dos Salários",
-    salaryRange: "Faixa Salarial",
-    low: "Mínimo",
-    average: "Médio",
-    high: "Máximo",
-    overviewText: (job: string, country: string, estimate: SalaryEstimate) =>
-      `O salário médio para ${job} no ${country} varia de ${estimate.low.local} (${estimate.low.usd}) a ${estimate.high.local} (${estimate.high.usd}) anualmente, com média de ${estimate.average.local} (${estimate.average.usd}). Posições de nível inicial tipicamente pagam cerca de ${estimate.hourly.low} por hora, enquanto cargos seniores podem superar ${estimate.high.local}.`,
-    market: "Tendências do Mercado de Trabalho",
-    marketText: (job: string, country: string, estimate: SalaryEstimate) => {
-      return `A demanda por ${job} no ${country} varia conforme a região.`;
-    },
-    factors: "Fatores que Afetam o Salário",
-    factorsText: (job: string) => `Fatores-chave que influenciam salários de ${job} incluem anos de experiência, habilidades técnicas específicas, tamanho da empresa e localização no país. Certificações de provedores de nuvem importantes (AWS, Azure, GCP) e frameworks como React, Node.js e Python aumentam consistentemente o potencial de ganho.`,
-    skills: "Habilidades em Demanda",
-    skillsText: (job: string) => `Para papéis de ${job}, empregadores priorizam plataformas de nuvem, containerização (Docker, Kubernetes), pipelines de CI/CD e conhecimento de design de sistemas. Habilidades interpessoais como comunicação e resolução de problemas impactam os pacotes salariais.`,
+    title: 'Salário de {job} em {country}',
+    salaryRange: 'Faixa Salarial',
+    overview: 'Visão Geral',
+    market: 'Tendências do Mercado',
+    factors: 'Fatores que Influenciam o Salário',
+    skills: 'Principais Habilidades',
   },
 };
 
-// Datos de país (simplificado para este ejemplo; se recomienda mantener el dataset completo en producción)
-const countryData: Record<string, any> = {
-  // Se mantiene el dataset existente en el proyecto real
-};
+// Helper to resolve language
+function getLanguage(country: string): 'en' | 'es' | 'pt' {
+  return countryLanguageMap[country.toLowerCase()] || 'en';
+}
 
-const countryNames: Record<string, string> = {
-  "united-states": "United States",
-  "united-kingdom": "United Kingdom",
-  germany: "Germany",
-  france: "France",
-  canada: "Canada",
-  australia: "Australia",
-  japan: "Japan",
-  brazil: "Brazil",
-  mexico: "Mexico",
-  colombia: "Colombia",
-  india: "India",
-  spain: "Spain",
-  italy: "Italy",
-  netherlands: "Netherlands",
-  sweden: "Sweden",
-  norway: "Norway",
-  switzerland: "Switzerland",
-  singapore: "Singapore",
-  "south-korea": "South Korea",
-  argentina: "Argentina",
-  chile: "Chile",
-  peru: "Peru",
-};
+// Helper to resolve currency
+function getCurrency(country: string): string {
+  return countryCurrencyMap[country.toLowerCase()] || 'USD';
+}
+
+// Helper to resolve combination by params
+function findCombination(
+  job: string,
+  country: string
+): Combination | undefined {
+  return combinations.find(
+    (c: Combination) =>
+      c.job.toLowerCase() === job.toLowerCase() &&
+      c.country.toLowerCase() === country.toLowerCase()
+  );
+}
+
+// Helper to replace text in content blocks
+function renderBlockTemplate(
+  block: string,
+  params: { [key: string]: string }
+): string {
+  let result = block;
+  for (const [key, value] of Object.entries(params)) {
+    result = result.replaceAll(`{${key}}`, value);
+  }
+  return result;
+}
 
 export async function generateStaticParams() {
-  return combinations.map((item) => ({
-    job: item.job,
-    country: item.country,
+  return combinations.map(({ job, country }) => ({
+    job,
+    country,
   }));
 }
 
-export async function generateMetadata({ params }: PageProps) {
-  const { job, country } = await params;
-  const displayJob = job.replace(/-/g, " ");
-  const displayCountry = countryNames[country] || country.replace(/-/g, " ");
-  const lang = countryLanguage[country] || "en";
-  const titles = { en: "Salary", es: "Salario", pt: "Salário" };
+export async function generateMetadata({
+  params,
+}: {
+  params: { job: string; country: string };
+}): Promise<Metadata> {
+  const { job, country } = params;
+  const lang = getLanguage(country);
+  const contentTemplate = content[lang];
+  const countryLabel =
+    country[0].toUpperCase() + country.slice(1).toLowerCase();
+  const jobLabel = job.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+
   return {
-    title: `${titles[lang]} ${displayJob} in ${displayCountry} (2026)`,
-    description: `Average salary for ${displayJob} professionals in ${displayCountry}.`,
+    title: renderBlockTemplate(contentTemplate.title, {
+      job: jobLabel,
+      country: countryLabel,
+    }),
+    description: `${countryLabel} ${jobLabel} salaries and compensation information`,
   };
 }
 
-export default async function SalaryPage({ params }: PageProps) {
-  const { job, country } = await params;
-  const displayJob = job.replace(/-/g, " ");
-  const displayCountry = countryNames[country] || country.replace(/-/g, " ");
-  const data = countryData[country] || countryData["united-states"];
-  const lang = countryLanguage[country] || "en";
-  const t = content[lang];
+export default function SalaryPage({
+  params,
+}: {
+  params: { job: string; country: string };
+}) {
+  const { job, country } = params;
+  const combination = findCombination(job, country);
+  if (!combination) {
+    return (
+      <main>
+        <h1>Data not found</h1>
+      </main>
+    );
+  }
 
-  const baseSalary = jobBaseSalary[job] || 70000;
-  const salaryEstimate = generateSalaryEstimate(job, country, baseSalary);
+  const lang = getLanguage(country);
+  const contentBlock = content[lang];
+
+  const jobLabel = combination.job
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, (l) => l.toUpperCase());
+  const countryLabel =
+    combination.country[0].toUpperCase() +
+    combination.country.slice(1).toLowerCase();
+
+  // Salary logic
+  const usdSalary = combination.jobBaseSalary;
+  const currency = getCurrency(country);
+  const conversion = currencyConversion[currency];
+
+  const localAverage = Math.round(usdSalary * conversion);
+  const localLow = Math.round(localAverage * 0.7);
+  const localHigh = Math.round(localAverage * 1.3);
+
+  const displayLow = formatDualSalaryDisplay(
+    localLow,
+    currency,
+    Math.round(localLow / conversion),
+    lang
+  );
+  const displayAvg = formatDualSalaryDisplay(
+    localAverage,
+    currency,
+    usdSalary,
+    lang
+  );
+  const displayHigh = formatDualSalaryDisplay(
+    localHigh,
+    currency,
+    Math.round(localHigh / conversion),
+    lang
+  );
+
+  // Demo data - should be replaced with real data
+  const overviewText: Record<'en' | 'es' | 'pt', string> = {
+    en: `Discover the typical salary for a ${jobLabel} in ${countryLabel}, including the most up-to-date compensation information for the region and industry.`,
+    es: `Descubra el salario típico para un(a) ${jobLabel} en ${countryLabel}, incluyendo la información de compensación más actualizada para la región y el sector.`,
+    pt: `Descubra o salário típico para um(a) ${jobLabel} em ${countryLabel}, incluindo as informações de remuneração mais atualizadas para a região e o setor.`,
+  };
+
+  const marketText: Record<'en' | 'es' | 'pt', string> = {
+    en: `The job market for ${jobLabel}s in ${countryLabel} is evolving, with salary ranges reflecting demand, skill level, and experience.`,
+    es: `El mercado laboral para ${jobLabel}s en ${countryLabel} está en evolución, con rangos salariales que reflejan la demanda, el nivel de habilidad y la experiencia.`,
+    pt: `O mercado de trabalho para ${jobLabel}s em ${countryLabel} está evoluindo, com faixas salariais que refletem demanda, nível de habilidade e experiência.`,
+  };
+
+  const factorsText: Record<'en' | 'es' | 'pt', string> = {
+    en: `Key factors impacting salary include experience, education, company size, and location.`,
+    es: `Los principales factores que impactan el salario incluyen experiencia, educación, tamaño de la empresa y ubicación.`,
+    pt: `Os principais fatores que impactam o salário incluem experiência, educação, tamanho da empresa e localização.`,
+  };
+
+  const skillsText: Record<'en' | 'es' | 'pt', string> = {
+    en: `Top skills for success include technical expertise, communication, problem-solving, and adaptability.`,
+    es: `Las principales habilidades para el éxito incluyen experiencia técnica, comunicación, resolución de problemas y adaptabilidad.`,
+    pt: `As principais habilidades para o sucesso incluem expertise técnica, comunicação, solução de problemas e adaptabilidade.`,
+  };
 
   return (
-    <main className="min-h-screen py-12 px-4 max-w-3xl mx-auto">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">
-        {t.title} {displayJob} in {displayCountry} (2026)
+    <main>
+      <h1>
+        {renderBlockTemplate(contentBlock.title, {
+          job: jobLabel,
+          country: countryLabel,
+        })}
       </h1>
 
-      <section className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-800 mb-3">{t.salaryRange}</h2>
-        <ul className="text-gray-600 space-y-2">
+      <section>
+        <h2>{contentBlock.salaryRange}</h2>
+        <ul>
           <li>
-            <strong>{t.low}:</strong> {salaryEstimate.low.local} ({salaryEstimate.low.usd})
+            <strong>
+              {lang === 'es' ? 'Bajo' : lang === 'pt' ? 'Baixo' : 'Low'}:
+            </strong>{' '}
+            {displayLow}
           </li>
           <li>
-            <strong>{t.average}:</strong> {salaryEstimate.average.local} ({salaryEstimate.average.usd})
+            <strong>
+              {lang === 'es' ? 'Promedio' : lang === 'pt' ? 'Médio' : 'Average'}:
+            </strong>{' '}
+            {displayAvg}
           </li>
           <li>
-            <strong>{t.high}:</strong> {salaryEstimate.high.local} ({salaryEstimate.high.usd})
+            <strong>
+              {lang === 'es' ? 'Alto' : lang === 'pt' ? 'Alto' : 'High'}:
+            </strong>{' '}
+            {displayHigh}
           </li>
         </ul>
       </section>
 
-      <section className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-800 mb-3">{t.overview}</h2>
-        <p className="text-gray-600 leading-relaxed">
-          {t.overviewText(displayJob, displayCountry, salaryEstimate, data)}
-        </p>
-      </section>
-
-      <section className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-800 mb-3">{t.market}</h2>
-        <p className="text-gray-600 leading-relaxed">
-          {t.marketText(displayJob, displayCountry, salaryEstimate, data)}
-        </p>
-      </section>
-
-      <section className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-800 mb-3">{t.factors}</h2>
-        <p className="text-gray-600 leading-relaxed">{t.factorsText(displayJob)}</p>
+      <section>
+        <h2>{contentBlock.overview}</h2>
+        <p>{overviewText[lang]}</p>
       </section>
 
       <section>
-        <h2 className="text-xl font-semibold text-gray-800 mb-3">{t.skills}</h2>
-        <p className="text-gray-600 leading-relaxed">{t.skillsText(displayJob)}</p>
+        <h2>{contentBlock.market}</h2>
+        <p>{marketText[lang]}</p>
+      </section>
+
+      <section>
+        <h2>{contentBlock.factors}</h2>
+        <p>{factorsText[lang]}</p>
+      </section>
+
+      <section>
+        <h2>{contentBlock.skills}</h2>
+        <p>{skillsText[lang]}</p>
       </section>
     </main>
   );
